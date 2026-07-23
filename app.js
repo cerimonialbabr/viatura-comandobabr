@@ -1,6 +1,6 @@
 /* app.js - versão consolidada */
 
-const API="COLE_AQUI_O_URL_DO_SEU_APPS_SCRIPT";
+const API="https://script.google.com/macros/s/AKfycbyQZlxqsUEeFXsGy-SmjTGj400w52qL5xHUq6tvh1dI4gZvENdfJnn_abHSE73_IZD0gw/exec";
 
 let reservas=[];
 let militares=[];
