@@ -3,7 +3,12 @@ const state={reservations:[],military:[],sectors:[],missions:[],currentDate:new 
 const months=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 document.addEventListener("DOMContentLoaded",initialize);
 async function initialize(){bindNavigation();bindActions();showLoader();try{validateApi();await loadAllData();fillSelects();renderCalendar();setDefaultDate();}catch(error){console.error(error);showToast("Não foi possível carregar o sistema: "+error.message,"error");setMessage(document.getElementById("reservation-message"),error.message,"error");}finally{hideLoader();}}
-function validateApi(){if(!window.CONFIG||!CONFIG.API_URL||CONFIG.API_URL.includes("COLE_AQUI"))throw new Error("URL do Apps Script não configurada.");}
+function validateApi(){
+  const config = window.CONFIG;
+  if(!config || !config.API_URL || config.API_URL.includes("COLE_AQUI")){
+    throw new Error("URL do Apps Script não configurada.");
+  }
+}
 function bindNavigation(){document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>openPage(button.dataset.page)));}
 function bindActions(){byId("previous-month").addEventListener("click",()=>{state.currentDate=new Date(state.currentDate.getFullYear(),state.currentDate.getMonth()-1,1);renderCalendar();});byId("next-month").addEventListener("click",()=>{state.currentDate=new Date(state.currentDate.getFullYear(),state.currentDate.getMonth()+1,1);renderCalendar();});byId("reservation-user").addEventListener("change",updateSector);byId("reservation-form").addEventListener("submit",submitReservation);byId("search-my-reservations").addEventListener("click",renderMyReservations);byId("close-modal").addEventListener("click",closeModal);byId("cancel-reservation").addEventListener("click",cancelSelectedReservation);byId("modal-backdrop").addEventListener("click",e=>{if(e.target===byId("modal-backdrop"))closeModal();});}
 function openPage(name){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));byId(`page-${name}`).classList.add("active");document.querySelector(`[data-page="${name}"]`).classList.add("active");if(name==="calendar")renderCalendar();if(name==="mine")renderMyReservations();}
