@@ -1,340 +1,688 @@
-const state = {
-  reservations: [],
-  users: [],
-  ranks: [],
-  sectors: [],
-  missions: [],
-  currentDate: new Date(),
-  selectedReservationId: null
-};
+/* ==========================================
+   SISTEMA DE RESERVA DA VIATURA DO COMANDO
+   app.js
+========================================== */
 
-const monthNames = [
-  "janeiro", "fevereiro", "março", "abril", "maio", "junho",
-  "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"
-];
+const API =
+"https://script.google.com/macros/s/SEU_DEPLOYMENT_ID/exec";
 
-window.addEventListener("DOMContentLoaded", initialize);
+let reservas = [];
 
-async function initialize() {
-  bindNavigation();
-  bindActions();
+let militares = [];
 
-  if (!CONFIG.API_URL || CONFIG.API_URL.includes("COLE_AQUI")) {
-    alert("Configure a URL do Web App no arquivo config.js.");
-    return;
-  }
+let setores = [];
 
-  try {
-    await Promise.all([loadConfiguration(), loadUsers(), loadReservations()]);
-    fillAllSelects();
-    renderCalendar();
-  } catch (error) {
-    alert("Não foi possível carregar o sistema. " + error.message);
-  }
+let tiposMissao = [];
+
+document.addEventListener("DOMContentLoaded", iniciar);
+
+async function iniciar(){
+
+    mostrarLoader();
+
+    try{
+
+        await carregarDados();
+
+        preencherMilitares();
+
+        preencherTiposMissao();
+
+        montarCalendario();
+
+        atualizarMinhasReservas();
+
+    }
+
+    catch(erro){
+
+        console.error(erro);
+
+        alert("Erro ao carregar o sistema.");
+
+    }
+
+    esconderLoader();
+
+}
+async function carregarDados(){
+
+    const resultados = await Promise.all([
+
+        apiGet("getReservas"),
+
+        apiGet("getMilitares"),
+
+        apiGet("getTiposMissao"),
+
+        apiGet("getSetores")
+
+    ]);
+
+    reservas = resultados[0].reservas;
+
+    militares = resultados[1].militares;
+
+    tiposMissao = resultados[2].tipos;
+
+    setores = resultados[3].setores;
+
 }
 
-function bindNavigation() {
-  document.querySelectorAll(".nav-button").forEach(button => {
-    button.addEventListener("click", () => openPage(button.dataset.page));
-  });
+async function apiGet(action){
+
+    const resposta = await fetch(
+
+        API + "?action=" + action,
+
+        {
+
+            cache:"no-store"
+
+        }
+
+    );
+
+    return await resposta.json();
+
 }
 
-function bindActions() {
-  document.getElementById("previous-month").addEventListener("click", () => {
-    state.currentDate.setMonth(state.currentDate.getMonth() - 1);
-    renderCalendar();
-  });
+async function apiPost(action,dados){
 
-  document.getElementById("next-month").addEventListener("click", () => {
-    state.currentDate.setMonth(state.currentDate.getMonth() + 1);
-    renderCalendar();
-  });
+    const form = new FormData();
 
-  document.getElementById("reservation-form").addEventListener("submit", submitReservation);
-  document.getElementById("user-form").addEventListener("submit", submitUser);
-  document.getElementById("search-my-reservations").addEventListener("click", renderMyReservations);
-  document.getElementById("close-modal").addEventListener("click", closeModal);
-  document.getElementById("cancel-reservation").addEventListener("click", cancelSelectedReservation);
-  document.getElementById("modal-backdrop").addEventListener("click", event => {
-    if (event.target.id === "modal-backdrop") closeModal();
-  });
+    form.append("action",action);
+
+    form.append(
+
+        "payload",
+
+        JSON.stringify(dados)
+
+    );
+
+    const resposta = await fetch(
+
+        API,
+
+        {
+
+            method:"POST",
+
+            body:form
+
+        }
+
+    );
+
+    return await resposta.json();
+
 }
 
-function openPage(pageName) {
-  document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
-  document.querySelectorAll(".nav-button").forEach(button => button.classList.remove("active"));
+function preencherMilitares() {
 
-  document.getElementById(`page-${pageName}`).classList.add("active");
-  document.querySelector(`[data-page="${pageName}"]`).classList.add("active");
+    const select = document.getElementById("militar");
 
-  if (pageName === "calendar") renderCalendar();
-  if (pageName === "mine") renderMyReservations();
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Selecione...</option>';
+
+    militares.forEach(m => {
+
+        const option = document.createElement("option");
+
+        option.value = m.militar;
+        option.textContent = m.militar;
+
+        select.appendChild(option);
+
+    });
+
 }
 
-async function apiGet(action, params = {}) {
-  const url = new URL(CONFIG.API_URL);
-  url.searchParams.set("action", action);
-  url.searchParams.set("_", Date.now());
-  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+function preencherTiposMissao() {
 
-  const response = await fetch(url.toString(), { method: "GET", redirect: "follow" });
-  if (!response.ok) throw new Error(`Erro HTTP ${response.status}`);
-  const data = await response.json();
-  if (data.sucesso === false) throw new Error(data.mensagem || "Falha na operação.");
-  return data;
+    const select = document.getElementById("tipoMissao");
+
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Selecione...</option>';
+
+    tiposMissao.forEach(tipo => {
+
+        const option = document.createElement("option");
+
+        option.value = tipo;
+        option.textContent = tipo;
+
+        select.appendChild(option);
+
+    });
+
 }
 
-async function apiPost(action, payload) {
-  const body = new URLSearchParams();
-  body.set("action", action);
-  body.set("payload", JSON.stringify(payload));
+function atualizarSetor() {
 
-  const response = await fetch(CONFIG.API_URL, {
-    method: "POST",
-    body,
-    redirect: "follow"
-  });
+    const militarSelecionado =
+        document.getElementById("militar").value;
 
-  if (!response.ok) throw new Error(`Erro HTTP ${response.status}`);
-  const data = await response.json();
-  if (data.sucesso === false) throw new Error(data.mensagem || "Falha na operação.");
-  return data;
+    const campoSetor =
+        document.getElementById("setor");
+
+    const militar = militares.find(
+        x => x.militar === militarSelecionado
+    );
+
+    campoSetor.value = militar
+        ? militar.setor
+        : "";
+
+}
+async function salvarReserva() {
+
+    const dados = {
+
+        militar:
+            document.getElementById("militar").value,
+
+        tipoMissao:
+            document.getElementById("tipoMissao").value,
+
+        data:
+            document.getElementById("data").value,
+
+        horaInicio:
+            document.getElementById("horaInicio").value,
+
+        horaFim:
+            document.getElementById("horaFim").value,
+
+        observacoes:
+            document.getElementById("observacoes").value
+
+    };
+
+    if (!validarFormulario(dados))
+        return;
+
+    mostrarLoader();
+
+    const resposta = await apiPost(
+        "criarReserva",
+        dados
+    );
+
+    esconderLoader();
+
+    if (!resposta.sucesso) {
+
+        mostrarToast(
+            resposta.mensagem,
+            "erro"
+        );
+
+        return;
+
+    }
+
+    mostrarToast(
+        "Reserva realizada com sucesso.",
+        "sucesso"
+    );
+
+    limparFormulario();
+
+    await carregarDados();
+
+    montarCalendario();
+
+    atualizarMinhasReservas();
+
 }
 
-async function loadConfiguration() {
-  const data = await apiGet("getConfiguracao");
-  state.ranks = data.postos || [];
-  state.sectors = data.setores || [];
-  state.missions = data.missoes || [];
+function validarFormulario(dados){
+
+    if(
+        !dados.militar ||
+        !dados.tipoMissao ||
+        !dados.data ||
+        !dados.horaInicio ||
+        !dados.horaFim
+    ){
+
+        mostrarToast(
+            "Preencha todos os campos.",
+            "erro"
+        );
+
+        return false;
+
+    }
+
+    if(dados.horaFim<=dados.horaInicio){
+
+        mostrarToast(
+            "Horário inválido.",
+            "erro"
+        );
+
+        return false;
+
+    }
+
+    return true;
+
 }
 
-async function loadUsers() {
-  const data = await apiGet("getUsuarios");
-  state.users = data.usuarios || [];
+function limparFormulario(){
+
+    document.getElementById("militar").value="";
+
+    document.getElementById("setor").value="";
+
+    document.getElementById("tipoMissao").value="";
+
+    document.getElementById("data").value="";
+
+    document.getElementById("horaInicio").value="";
+
+    document.getElementById("horaFim").value="";
+
+    document.getElementById("observacoes").value="";
+
 }
 
-async function loadReservations() {
-  const data = await apiGet("getReservas");
-  state.reservations = data.reservas || [];
+
+function atualizarMinhasReservas() {
+
+    const tbody = document.getElementById("tabelaReservas");
+
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    reservas.forEach(reserva => {
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+
+            <td>${formatarDataBR(reserva.data)}</td>
+
+            <td>${reserva.horaInicio}</td>
+
+            <td>${reserva.horaFim}</td>
+
+            <td>${reserva.militar}</td>
+
+            <td>${reserva.tipoMissao}</td>
+
+            <td>${reserva.status}</td>
+
+            <td>
+
+                ${
+                    reserva.status === "CONFIRMADO"
+
+                    ?
+
+                    `<button class="btnCancelar"
+                        onclick="cancelarReserva('${reserva.id}')">
+                        Cancelar
+                    </button>`
+
+                    :
+
+                    ""
+
+                }
+
+            </td>
+
+        `;
+
+        tbody.appendChild(tr);
+
+    });
+
+}
+async function cancelarReserva(id){
+
+    if(!confirm("Deseja cancelar esta reserva?"))
+        return;
+
+    mostrarLoader();
+
+    const resposta = await apiPost(
+
+        "cancelarReserva",
+
+        {id}
+
+    );
+
+    esconderLoader();
+
+    if(!resposta.sucesso){
+
+        mostrarToast(
+
+            resposta.mensagem,
+
+            "erro"
+
+        );
+
+        return;
+
+    }
+
+    mostrarToast(
+
+        "Reserva cancelada.",
+
+        "sucesso"
+
+    );
+
+    await carregarDados();
+
+    montarCalendario();
+
+    atualizarMinhasReservas();
+
 }
 
-function fillAllSelects() {
-  fillSelect("reservation-user", state.users.map(user => ({ value: user.militar, label: user.militar })), "Selecione o militar");
-  fillSelect("my-user", state.users.map(user => ({ value: user.militar, label: user.militar })), "Selecione o militar");
-  fillSelect("reservation-sector", state.sectors.map(value => ({ value, label: value })), "Selecione o setor");
-  fillSelect("user-sector", state.sectors.map(value => ({ value, label: value })), "Selecione o setor");
-  fillSelect("reservation-mission", state.missions.map(value => ({ value, label: value })), "Selecione o tipo de missão");
-  fillSelect("user-rank", state.ranks.map(value => ({ value, label: value })), "Selecione o posto ou graduação");
+function mostrarLoader(){
+
+    const loader=document.getElementById("loader");
+
+    if(loader)
+
+        loader.style.display="flex";
+
 }
 
-function fillSelect(id, items, placeholder) {
-  const select = document.getElementById(id);
-  const previousValue = select.value;
-  select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>`;
 
-  items.forEach(item => {
-    const option = document.createElement("option");
-    option.value = item.value;
-    option.textContent = item.label;
-    select.appendChild(option);
-  });
 
-  if (items.some(item => item.value === previousValue)) select.value = previousValue;
+function esconderLoader(){
+
+    const loader=document.getElementById("loader");
+
+    if(loader)
+
+        loader.style.display="none";
+
 }
 
-function renderCalendar() {
-  const calendar = document.getElementById("calendar");
-  const year = state.currentDate.getFullYear();
-  const month = state.currentDate.getMonth();
-  document.getElementById("calendar-title").textContent = `${monthNames[month]} de ${year}`;
+function mostrarToast(texto,tipo){
 
-  calendar.innerHTML = "";
-  ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].forEach(name => {
-    const header = document.createElement("div");
-    header.className = "weekday";
-    header.textContent = name;
-    calendar.appendChild(header);
-  });
+    const toast=document.getElementById("toast");
 
-  const first = new Date(year, month, 1);
-  const gridStart = new Date(year, month, 1 - first.getDay());
-  const today = toIsoDate(new Date());
+    if(!toast){
 
-  for (let index = 0; index < 42; index++) {
-    const date = new Date(gridStart);
-    date.setDate(gridStart.getDate() + index);
-    const isoDate = toIsoDate(date);
+        alert(texto);
 
-    const cell = document.createElement("div");
-    cell.className = "calendar-day";
-    if (date.getMonth() !== month) cell.classList.add("outside");
-    if (isoDate === today) cell.classList.add("today");
+        return;
 
-    const number = document.createElement("div");
-    number.className = "day-number";
-    number.textContent = date.getDate();
-    cell.appendChild(number);
+    }
 
-    state.reservations
-      .filter(reservation => reservation.status === "CONFIRMADO" && reservation.data === isoDate)
-      .forEach(reservation => {
-        const eventButton = document.createElement("button");
-        eventButton.type = "button";
-        eventButton.className = "calendar-event";
-        eventButton.textContent = `${reservation.horaInicio} ${reservation.militar}`;
-        eventButton.addEventListener("click", () => openReservationModal(reservation.id));
-        cell.appendChild(eventButton);
-      });
+    toast.innerText=texto;
 
-    calendar.appendChild(cell);
-  }
+    toast.className="toast "+tipo;
+
+    toast.classList.add("show");
+
+    setTimeout(()=>{
+
+        toast.classList.remove("show");
+
+    },3000);
+
 }
 
-async function submitReservation(event) {
-  event.preventDefault();
-  const message = document.getElementById("reservation-message");
-  setMessage(message, "", "");
+function formatarDataBR(data){
 
-  const payload = {
-    militar: document.getElementById("reservation-user").value,
-    setor: document.getElementById("reservation-sector").value,
-    tipoMissao: document.getElementById("reservation-mission").value,
-    data: document.getElementById("reservation-date").value,
-    horaInicio: document.getElementById("reservation-start").value,
-    horaFim: document.getElementById("reservation-end").value,
-    observacoes: document.getElementById("reservation-notes").value.trim()
-  };
+    if(!data) return "";
 
-  if (payload.horaFim <= payload.horaInicio) {
-    setMessage(message, "O horário de término deve ser posterior ao início.", "error");
-    return;
-  }
+    const partes=data.split("-");
 
-  try {
-    const result = await apiPost("criarReserva", payload);
-    setMessage(message, result.mensagem, "success");
-    document.getElementById("reservation-form").reset();
-    await loadReservations();
-    renderCalendar();
-    setTimeout(() => openPage("calendar"), 700);
-  } catch (error) {
-    setMessage(message, error.message, "error");
-  }
+    return partes[2]+"/"+partes[1]+"/"+partes[0];
+
 }
 
-async function submitUser(event) {
-  event.preventDefault();
-  const message = document.getElementById("user-message");
-  setMessage(message, "", "");
+function reservasDoDia(data){
 
-  const payload = {
-    posto: document.getElementById("user-rank").value,
-    nomeGuerra: document.getElementById("user-war-name").value.trim(),
-    nomeCompleto: document.getElementById("user-full-name").value.trim(),
-    setor: document.getElementById("user-sector").value
-  };
+    return reservas.filter(r=>r.data===data);
 
-  try {
-    const result = await apiPost("cadastrarUsuario", payload);
-    setMessage(message, result.mensagem, "success");
-    document.getElementById("user-form").reset();
-    await loadUsers();
-    fillAllSelects();
-  } catch (error) {
-    setMessage(message, error.message, "error");
-  }
 }
 
-function renderMyReservations() {
-  const container = document.getElementById("my-reservations");
-  const military = document.getElementById("my-user").value;
+function ordenarReservas(){
 
-  if (!military) {
-    container.innerHTML = "<p class=\"help\">Selecione um militar para consultar as reservas.</p>";
-    return;
-  }
+    reservas.sort((a,b)=>{
 
-  const items = state.reservations
-    .filter(reservation => reservation.militar === military)
-    .sort((a, b) => `${b.data} ${b.horaInicio}`.localeCompare(`${a.data} ${a.horaInicio}`));
+        if(a.data!=b.data)
 
-  if (!items.length) {
-    container.innerHTML = "<p>Nenhuma reserva encontrada.</p>";
-    return;
-  }
+            return a.data.localeCompare(b.data);
 
-  container.innerHTML = items.map(reservation => `
-    <article class="reservation-item ${reservation.status === "CANCELADO" ? "cancelled" : ""}">
-      <h3>${formatDateBr(reservation.data)} — ${escapeHtml(reservation.horaInicio)} às ${escapeHtml(reservation.horaFim)}</h3>
-      <p><strong>Setor:</strong> ${escapeHtml(reservation.setor)}</p>
-      <p><strong>Missão:</strong> ${escapeHtml(reservation.tipoMissao)}</p>
-      <p><strong>Status:</strong> ${escapeHtml(reservation.status)}</p>
-      <p><strong>Observações:</strong> ${escapeHtml(reservation.observacoes || "Sem observações")}</p>
-      ${reservation.status === "CONFIRMADO" ? `<button type="button" class="button secondary" onclick="openReservationModal('${reservation.id}')">Ver detalhes</button>` : ""}
-    </article>
-  `).join("");
+        return a.horaInicio.localeCompare(b.horaInicio);
+
+    });
+
 }
 
-function openReservationModal(id) {
-  const reservation = state.reservations.find(item => item.id === id);
-  if (!reservation) return;
+let hoje = new Date();
 
-  state.selectedReservationId = id;
-  document.getElementById("modal-content").innerHTML = `
-    <p><strong>Militar:</strong> ${escapeHtml(reservation.militar)}</p>
-    <p><strong>Setor:</strong> ${escapeHtml(reservation.setor)}</p>
-    <p><strong>Tipo de missão:</strong> ${escapeHtml(reservation.tipoMissao)}</p>
-    <p><strong>Data:</strong> ${formatDateBr(reservation.data)}</p>
-    <p><strong>Horário:</strong> ${escapeHtml(reservation.horaInicio)} às ${escapeHtml(reservation.horaFim)}</p>
-    <p><strong>Observações:</strong> ${escapeHtml(reservation.observacoes || "Sem observações")}</p>
-  `;
-  document.getElementById("cancel-reservation").style.display = reservation.status === "CONFIRMADO" ? "block" : "none";
-  document.getElementById("modal-backdrop").classList.remove("hidden");
+let mesAtual = hoje.getMonth();
+
+let anoAtual = hoje.getFullYear();
+
+
+function montarCalendario(){
+
+    const calendario =
+        document.getElementById("calendario");
+
+    if(!calendario) return;
+
+    calendario.innerHTML="";
+
+    const primeiroDia =
+        new Date(anoAtual,mesAtual,1);
+
+    const ultimoDia =
+        new Date(anoAtual,mesAtual+1,0);
+
+    const inicio =
+        primeiroDia.getDay();
+
+    const diasMes =
+        ultimoDia.getDate();
+
+    for(let i=0;i<inicio;i++){
+
+        calendario.appendChild(
+            document.createElement("div")
+        );
+
+    }
+
+    for(let dia=1;dia<=diasMes;dia++){
+
+        calendario.appendChild(
+            criarDiaCalendario(dia)
+          
+        );
+      
+atualizarTituloCalendario();
+      
+    }
+
 }
 
-function closeModal() {
-  state.selectedReservationId = null;
-  document.getElementById("modal-backdrop").classList.add("hidden");
+
+
+   function criarDiaCalendario(dia){
+
+    const data =
+        `${anoAtual}-${String(mesAtual+1).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
+
+    const div =
+        document.createElement("div");
+
+    div.className="diaCalendario";
+
+    div.innerHTML=dia;
+
+    const possuiReserva=
+        reservas.some(r=>
+            r.data===data &&
+            r.status==="CONFIRMADO"
+        );
+
+    if(possuiReserva){
+
+        div.classList.add("ocupado");
+
+    }
+
+    div.onclick=()=>{
+
+        mostrarReservasDia(data);
+
+    };
+
+    return div;
+
 }
 
-async function cancelSelectedReservation() {
-  if (!state.selectedReservationId) return;
-  if (!confirm("Confirma o cancelamento desta reserva?")) return;
+function mostrarReservasDia(data){
 
-  try {
-    const result = await apiPost("cancelarReserva", { id: state.selectedReservationId });
-    alert(result.mensagem);
-    closeModal();
-    await loadReservations();
-    renderCalendar();
-    renderMyReservations();
-  } catch (error) {
-    alert(error.message);
-  }
+    const lista =
+        document.getElementById("listaDia");
+
+    if(!lista) return;
+
+    lista.innerHTML="";
+
+    const reservasDia=
+        reservas
+        .filter(r=>r.data===data)
+        .sort((a,b)=>
+            a.horaInicio.localeCompare(b.horaInicio)
+        );
+
+    if(reservasDia.length===0){
+
+        lista.innerHTML=
+            "<p>Nenhuma reserva.</p>";
+
+        return;
+
+    }
+
+    reservasDia.forEach(r=>{
+
+        const item=
+            document.createElement("div");
+
+        item.className="itemReserva";
+
+        item.innerHTML=`
+
+            <strong>${r.horaInicio}</strong>
+            às
+            <strong>${r.horaFim}</strong>
+
+            <br>
+
+            ${r.militar}
+
+            <br>
+
+            ${r.tipoMissao}
+
+        `;
+
+        lista.appendChild(item);
+
+    });
+
 }
 
-function setMessage(element, text, type) {
-  element.textContent = text;
-  element.className = `message ${type || ""}`;
+function mesAnterior(){
+
+    mesAtual--;
+
+    if(mesAtual<0){
+
+        mesAtual=11;
+
+        anoAtual--;
+
+    }
+
+    montarCalendario();
+
 }
 
-function toIsoDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function proximoMes(){
+
+    mesAtual++;
+
+    if(mesAtual>11){
+
+        mesAtual=0;
+
+        anoAtual++;
+
+    }
+
+    montarCalendario();
+
 }
 
-function formatDateBr(isoDate) {
-  const parts = String(isoDate).split("-");
-  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : isoDate;
+function atualizarTituloCalendario(){
+
+    const meses=[
+
+        "Janeiro",
+
+        "Fevereiro",
+
+        "Março",
+
+        "Abril",
+
+        "Maio",
+
+        "Junho",
+
+        "Julho",
+
+        "Agosto",
+
+        "Setembro",
+
+        "Outubro",
+
+        "Novembro",
+
+        "Dezembro"
+
+    ];
+
+    const titulo=
+        document.getElementById("tituloCalendario");
+
+    if(titulo){
+
+        titulo.innerHTML=
+            meses[mesAtual]+" / "+anoAtual;
+
+    }
+
 }
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+
+
