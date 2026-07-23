@@ -1,130 +1,48 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Controle e Reserva da Viatura da BABR</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle da Viatura do Comando - BABR</title>
+<link rel="stylesheet" href="style.css">
+<script defer src="app.js"></script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <img src="assets/babr.png" alt="Logo da BABR" onerror="this.style.display='none'">
-      <div>
-        <h1>Controle e Reserva da Viatura</h1>
-        <p>Base Aérea de Brasília</p>
-      </div>
-    </div>
-  </header>
-
-  <main class="container">
-    <section id="page-calendar" class="page active">
-      <div class="card">
-        <div class="calendar-toolbar">
-          <button type="button" class="button secondary" id="previous-month">Anterior</button>
-          <h2 id="calendar-title"></h2>
-          <button type="button" class="button secondary" id="next-month">Próximo</button>
-        </div>
-        <div id="calendar" class="calendar"></div>
-      </div>
-    </section>
-
-    <section id="page-new" class="page">
-      <div class="card form-card">
-        <h2>Nova reserva</h2>
-        <form id="reservation-form">
-          <label for="reservation-user">Militar</label>
-          <select id="reservation-user" required></select>
-
-          <label for="reservation-sector">Setor</label>
-          <select id="reservation-sector" required></select>
-
-          <label for="reservation-mission">Tipo de missão</label>
-          <select id="reservation-mission" required></select>
-
-          <div class="form-grid">
-            <div>
-              <label for="reservation-date">Data</label>
-              <input id="reservation-date" type="date" required>
-            </div>
-            <div>
-              <label for="reservation-start">Hora de início</label>
-              <input id="reservation-start" type="time" required>
-            </div>
-            <div>
-              <label for="reservation-end">Hora de término</label>
-              <input id="reservation-end" type="time" required>
-            </div>
-          </div>
-
-          <label for="reservation-notes">Observações</label>
-          <textarea id="reservation-notes" rows="4"></textarea>
-
-          <button type="submit" class="button primary">Confirmar reserva</button>
-          <p id="reservation-message" class="message"></p>
-        </form>
-      </div>
-    </section>
-
-    <section id="page-users" class="page">
-      <div class="card form-card">
-        <h2>Cadastrar usuário</h2>
-        <p class="help">O posto e o nome de guerra serão usados de forma padronizada nas reservas.</p>
-        <form id="user-form">
-          <div class="form-grid two-columns">
-            <div>
-              <label for="user-rank">Posto ou graduação</label>
-              <select id="user-rank" required></select>
-            </div>
-            <div>
-              <label for="user-war-name">Nome de guerra</label>
-              <input id="user-war-name" type="text" maxlength="60" required>
-            </div>
-          </div>
-
-          <label for="user-full-name">Nome completo</label>
-          <input id="user-full-name" type="text" maxlength="120" required>
-
-          <label for="user-sector">Setor</label>
-          <select id="user-sector" required></select>
-
-          <button type="submit" class="button primary">Cadastrar usuário</button>
-          <p id="user-message" class="message"></p>
-        </form>
-      </div>
-    </section>
-
-    <section id="page-mine" class="page">
-      <div class="card">
-        <h2>Minhas reservas</h2>
-        <div class="search-row">
-          <select id="my-user"></select>
-          <button type="button" class="button primary" id="search-my-reservations">Buscar</button>
-        </div>
-        <div id="my-reservations" class="reservation-list"></div>
-      </div>
-    </section>
-  </main>
-
-  <nav class="bottom-nav">
-    <button type="button" data-page="calendar" class="nav-button active">Calendário</button>
-    <button type="button" data-page="new" class="nav-button">Nova reserva</button>
-    <button type="button" data-page="mine" class="nav-button">Minhas reservas</button>
-    <button type="button" data-page="users" class="nav-button">Cadastrar usuário</button>
-  </nav>
-
-  <div id="modal-backdrop" class="modal-backdrop hidden">
-    <div class="modal" role="dialog" aria-modal="true">
-      <h2>Detalhes da reserva</h2>
-      <div id="modal-content"></div>
-      <div class="modal-actions">
-        <button type="button" class="button danger" id="cancel-reservation">Cancelar reserva</button>
-        <button type="button" class="button secondary" id="close-modal">Fechar</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+<div id="loader">Carregando...</div>
+<div id="toast"></div>
+<header><img src="assets/babr.png" style="height:70px"><h1>Controle da Viatura do Comando</h1><p>Base Aérea de Brasília</p></header>
+<nav>
+<button data-page="calendario">Calendário</button>
+<button data-page="nova">Nova Reserva</button>
+<button data-page="minhas">Minhas Reservas</button>
+<button data-page="sobre">Sobre</button>
+</nav>
+<main>
+<section id="pagina-calendario" class="page">
+<button onclick="mesAnterior()">&lt;</button><span id="tituloCalendario"></span><button onclick="proximoMes()">&gt;</button>
+<div id="calendario"></div>
+<h3>Reservas do dia</h3><div id="listaDia"></div>
+</section>
+<section id="pagina-nova" class="page" style="display:none">
+<select id="militar"></select>
+<input id="setor" readonly>
+<select id="tipoMissao"></select>
+<input type="date" id="data">
+<input type="time" id="horaInicio">
+<input type="time" id="horaFim">
+<textarea id="observacoes"></textarea>
+<button onclick="salvarReserva()">Salvar Reserva</button>
+</section>
+<section id="pagina-minhas" class="page" style="display:none">
+<table><thead><tr><th>Data</th><th>Início</th><th>Fim</th><th>Militar</th><th>Missão</th><th>Status</th><th></th></tr></thead><tbody id="tabelaReservas"></tbody></table>
+</section>
+<section id="pagina-sobre" class="page" style="display:none"><p>Sistema BABR.</p></section>
+</main>
+<script>
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+document.querySelectorAll(".page").forEach(p=>p.style.display="none");
+document.getElementById("pagina-"+b.dataset.page).style.display="block";
+});
+</script>
 </body>
 </html>
