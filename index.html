@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Controle da Viatura do Comando - BABR</title>
+
+<link rel="manifest" href="manifest.json">
+
+<link rel="stylesheet" href="style.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+<div id="loader">
+
+    <div class="spinner"></div>
+    <p>Carregando...</p>
+
+</div>
+
+<div id="app">
+
+    <!-- SIDEBAR -->
+
+    <aside id="sidebar">
+
+        <div class="logo">
+
+            <img src="img/logo.png" alt="BABR">
+
+            <h2>SCM BABR</h2>
+
+            <span>Controle da Viatura</span>
+
+        </div>
+
+        <nav>
+
+            <button class="menu active" data-page="inicio">
+
+                🏠
+                <span>Início</span>
+
+            </button>
+
+            <button class="menu" data-page="calendario">
+
+                📅
+                <span>Calendário</span>
+
+            </button>
+
+            <button class="menu" data-page="dashboard">
+
+                📊
+                <span>Dashboard</span>
+
+            </button>
+
+            <button class="menu" data-page="perfil">
+
+                👤
+                <span>Meu Perfil</span>
+
+            </button>
+
+        </nav>
+
+        <div class="sidebar-footer">
+
+            <button id="novaReserva">
+
+                ➕
+
+                Nova Reserva
+
+            </button>
+
+        </div>
+
+    </aside>
+
+    <!-- CONTEÚDO -->
+
+    <main id="content">
+
+        <!-- CABEÇALHO -->
+
+        <header>
+
+            <button id="menuMobile">
+
+                ☰
+
+            </button>
+
+            <div>
+
+                <h1 id="tituloPagina">
+
+                    Controle da Viatura do Comando
+
+                </h1>
+
+                <small>
+
+                    Base Aérea de Brasília
+
+                </small>
+
+            </div>
+
+            <div id="usuarioLogado">
+
+                <img id="fotoUsuario">
+
+                <div>
+
+                    <strong id="nomeUsuario">
+
+                        Usuário
+
+                    </strong>
+
+                    <span id="setorUsuario">
+
+                        Setor
+
+                    </span>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <!-- PÁGINA INICIAL -->
+
+        <section id="inicio" class="pagina ativa">
+
+            <div class="cards">
+
+                <div class="card">
+
+                    <h3>Reservas Hoje</h3>
+
+                    <span id="cardHoje">0</span>
+
+                </div>
+
+                <div class="card">
+
+                    <h3>Próxima Missão</h3>
+
+                    <span id="cardProxima">--</span>
+
+                </div>
+
+                <div class="card">
+
+                    <h3>Total do Mês</h3>
+
+                    <span id="cardMes">0</span>
+
+                </div>
+
+                <div class="card">
+
+                    <h3>Horas Utilizadas</h3>
+
+                    <span id="cardHoras">0</span>
+
+                </div>
+
+            </div>
+
+            <div id="timelineReservas">
+
+            </div>
+
+        </section>
+
+        <!-- CALENDÁRIO -->
+
+        <section id="calendario" class="pagina">
+
+            <div id="calendar"></div>
+
+        </section>
+
+        <!-- DASHBOARD -->
+
+        <section id="dashboard" class="pagina">
+
+            <div class="graficos">
+
+                <canvas id="graficoMes"></canvas>
+
+                <canvas id="graficoSetor"></canvas>
+
+                <canvas id="graficoMissao"></canvas>
+
+                <canvas id="graficoHoras"></canvas>
+
+            </div>
+
+        </section>
+
+        <!-- PERFIL -->
+
+        <section id="perfil" class="pagina">
+
+            <div class="perfilTopo">
+
+                <img id="fotoPerfil">
+
+                <div>
+
+                    <h2 id="perfilNome"></h2>
+
+                    <p id="perfilPosto"></p>
+
+                    <p id="perfilSetor"></p>
+
+                </div>
+
+            </div>
+
+            <h3>
+
+                Minhas Reservas
+
+            </h3>
+
+            <div id="minhasReservas">
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<!-- MODAL -->
+
+<div id="modalReserva" class="modal">
+
+    <div class="modal-content">
+
+        <div class="modal-header">
+
+            <h2>
+
+                Nova Reserva
+
+            </h2>
+
+            <button id="fecharModal">
+
+                ✖
+
+            </button>
+
+        </div>
+
+        <form id="formReserva">
+
+            <label>
+
+                Militar
+
+            </label>
+
+            <select id="usuario"></select>
+
+            <label>
+
+                Data
+
+            </label>
+
+            <input type="date" id="data">
+
+            <label>
+
+                Hora Inicial
+
+            </label>
+
+            <input type="time" id="horaInicio">
+
+            <label>
+
+                Hora Final
+
+            </label>
+
+            <input type="time" id="horaFim">
+
+            <label>
+
+                Tipo de Missão
+
+            </label>
+
+            <select id="tipoMissao"></select>
+
+            <label>
+
+                Observações
+
+            </label>
+
+            <textarea id="observacoes"></textarea>
+
+            <div class="acoes">
+
+                <button type="button" id="cancelar">
+
+                    Cancelar
+
+                </button>
+
+                <button type="submit">
+
+                    Salvar Reserva
+
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="api.js"></script>
+<script src="calendar.js"></script>
+<script src="dashboard.js"></script>
+<script src="profile.js"></script>
+<script src="app.js"></script>
+
+</body>
+
+</html>
