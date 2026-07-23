@@ -1,361 +1,130 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Controle da Viatura do Comando - BABR</title>
-
-<link rel="manifest" href="manifest.json">
-
-<link rel="stylesheet" href="style.css">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle e Reserva da Viatura da BABR</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
-<div id="loader">
-
-    <div class="spinner"></div>
-    <p>Carregando...</p>
-
-</div>
-
-<div id="app">
-
-    <!-- SIDEBAR -->
-
-    <aside id="sidebar">
-
-        <div class="logo">
-
-            <img src="img/logo.png" alt="BABR">
-
-            <h2>SCM BABR</h2>
-
-            <span>Controle da Viatura</span>
-
-        </div>
-
-        <nav>
-
-            <button class="menu active" data-page="inicio">
-
-                🏠
-                <span>Início</span>
-
-            </button>
-
-            <button class="menu" data-page="calendario">
-
-                📅
-                <span>Calendário</span>
-
-            </button>
-
-            <button class="menu" data-page="dashboard">
-
-                📊
-                <span>Dashboard</span>
-
-            </button>
-
-            <button class="menu" data-page="perfil">
-
-                👤
-                <span>Meu Perfil</span>
-
-            </button>
-
-        </nav>
-
-        <div class="sidebar-footer">
-
-            <button id="novaReserva">
-
-                ➕
-
-                Nova Reserva
-
-            </button>
-
-        </div>
-
-    </aside>
-
-    <!-- CONTEÚDO -->
-
-    <main id="content">
-
-        <!-- CABEÇALHO -->
-
-        <header>
-
-            <button id="menuMobile">
-
-                ☰
-
-            </button>
-
-            <div>
-
-                <h1 id="tituloPagina">
-
-                    Controle da Viatura do Comando
-
-                </h1>
-
-                <small>
-
-                    Base Aérea de Brasília
-
-                </small>
-
-            </div>
-
-            <div id="usuarioLogado">
-
-                <img id="fotoUsuario">
-
-                <div>
-
-                    <strong id="nomeUsuario">
-
-                        Usuário
-
-                    </strong>
-
-                    <span id="setorUsuario">
-
-                        Setor
-
-                    </span>
-
-                </div>
-
-            </div>
-
-        </header>
-
-        <!-- PÁGINA INICIAL -->
-
-        <section id="inicio" class="pagina ativa">
-
-            <div class="cards">
-
-                <div class="card">
-
-                    <h3>Reservas Hoje</h3>
-
-                    <span id="cardHoje">0</span>
-
-                </div>
-
-                <div class="card">
-
-                    <h3>Próxima Missão</h3>
-
-                    <span id="cardProxima">--</span>
-
-                </div>
-
-                <div class="card">
-
-                    <h3>Total do Mês</h3>
-
-                    <span id="cardMes">0</span>
-
-                </div>
-
-                <div class="card">
-
-                    <h3>Horas Utilizadas</h3>
-
-                    <span id="cardHoras">0</span>
-
-                </div>
-
-            </div>
-
-            <div id="timelineReservas">
-
-            </div>
-
-        </section>
-
-        <!-- CALENDÁRIO -->
-
-        <section id="calendario" class="pagina">
-
-            <div id="calendar"></div>
-
-        </section>
-
-        <!-- DASHBOARD -->
-
-        <section id="dashboard" class="pagina">
-
-            <div class="graficos">
-
-                <canvas id="graficoMes"></canvas>
-
-                <canvas id="graficoSetor"></canvas>
-
-                <canvas id="graficoMissao"></canvas>
-
-                <canvas id="graficoHoras"></canvas>
-
-            </div>
-
-        </section>
-
-        <!-- PERFIL -->
-
-        <section id="perfil" class="pagina">
-
-            <div class="perfilTopo">
-
-                <img id="fotoPerfil">
-
-                <div>
-
-                    <h2 id="perfilNome"></h2>
-
-                    <p id="perfilPosto"></p>
-
-                    <p id="perfilSetor"></p>
-
-                </div>
-
-            </div>
-
-            <h3>
-
-                Minhas Reservas
-
-            </h3>
-
-            <div id="minhasReservas">
-
-            </div>
-
-        </section>
-
-    </main>
-
-</div>
-
-<!-- MODAL -->
-
-<div id="modalReserva" class="modal">
-
-    <div class="modal-content">
-
-        <div class="modal-header">
-
-            <h2>
-
-                Nova Reserva
-
-            </h2>
-
-            <button id="fecharModal">
-
-                ✖
-
-            </button>
-
-        </div>
-
-        <form id="formReserva">
-
-            <label>
-
-                Militar
-
-            </label>
-
-            <select id="usuario"></select>
-
-            <label>
-
-                Data
-
-            </label>
-
-            <input type="date" id="data">
-
-            <label>
-
-                Hora Inicial
-
-            </label>
-
-            <input type="time" id="horaInicio">
-
-            <label>
-
-                Hora Final
-
-            </label>
-
-            <input type="time" id="horaFim">
-
-            <label>
-
-                Tipo de Missão
-
-            </label>
-
-            <select id="tipoMissao"></select>
-
-            <label>
-
-                Observações
-
-            </label>
-
-            <textarea id="observacoes"></textarea>
-
-            <div class="acoes">
-
-                <button type="button" id="cancelar">
-
-                    Cancelar
-
-                </button>
-
-                <button type="submit">
-
-                    Salvar Reserva
-
-                </button>
-
-            </div>
-
-        </form>
-
+  <header class="topbar">
+    <div class="brand">
+      <img src="assets/babr.png" alt="Logo da BABR" onerror="this.style.display='none'">
+      <div>
+        <h1>Controle e Reserva da Viatura</h1>
+        <p>Base Aérea de Brasília</p>
+      </div>
     </div>
+  </header>
 
-</div>
+  <main class="container">
+    <section id="page-calendar" class="page active">
+      <div class="card">
+        <div class="calendar-toolbar">
+          <button type="button" class="button secondary" id="previous-month">Anterior</button>
+          <h2 id="calendar-title"></h2>
+          <button type="button" class="button secondary" id="next-month">Próximo</button>
+        </div>
+        <div id="calendar" class="calendar"></div>
+      </div>
+    </section>
 
-<div id="toast"></div>
+    <section id="page-new" class="page">
+      <div class="card form-card">
+        <h2>Nova reserva</h2>
+        <form id="reservation-form">
+          <label for="reservation-user">Militar</label>
+          <select id="reservation-user" required></select>
 
-<script src="api.js"></script>
-<script src="calendar.js"></script>
-<script src="dashboard.js"></script>
-<script src="profile.js"></script>
-<script src="app.js"></script>
+          <label for="reservation-sector">Setor</label>
+          <select id="reservation-sector" required></select>
 
+          <label for="reservation-mission">Tipo de missão</label>
+          <select id="reservation-mission" required></select>
+
+          <div class="form-grid">
+            <div>
+              <label for="reservation-date">Data</label>
+              <input id="reservation-date" type="date" required>
+            </div>
+            <div>
+              <label for="reservation-start">Hora de início</label>
+              <input id="reservation-start" type="time" required>
+            </div>
+            <div>
+              <label for="reservation-end">Hora de término</label>
+              <input id="reservation-end" type="time" required>
+            </div>
+          </div>
+
+          <label for="reservation-notes">Observações</label>
+          <textarea id="reservation-notes" rows="4"></textarea>
+
+          <button type="submit" class="button primary">Confirmar reserva</button>
+          <p id="reservation-message" class="message"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="page-users" class="page">
+      <div class="card form-card">
+        <h2>Cadastrar usuário</h2>
+        <p class="help">O posto e o nome de guerra serão usados de forma padronizada nas reservas.</p>
+        <form id="user-form">
+          <div class="form-grid two-columns">
+            <div>
+              <label for="user-rank">Posto ou graduação</label>
+              <select id="user-rank" required></select>
+            </div>
+            <div>
+              <label for="user-war-name">Nome de guerra</label>
+              <input id="user-war-name" type="text" maxlength="60" required>
+            </div>
+          </div>
+
+          <label for="user-full-name">Nome completo</label>
+          <input id="user-full-name" type="text" maxlength="120" required>
+
+          <label for="user-sector">Setor</label>
+          <select id="user-sector" required></select>
+
+          <button type="submit" class="button primary">Cadastrar usuário</button>
+          <p id="user-message" class="message"></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="page-mine" class="page">
+      <div class="card">
+        <h2>Minhas reservas</h2>
+        <div class="search-row">
+          <select id="my-user"></select>
+          <button type="button" class="button primary" id="search-my-reservations">Buscar</button>
+        </div>
+        <div id="my-reservations" class="reservation-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <button type="button" data-page="calendar" class="nav-button active">Calendário</button>
+    <button type="button" data-page="new" class="nav-button">Nova reserva</button>
+    <button type="button" data-page="mine" class="nav-button">Minhas reservas</button>
+    <button type="button" data-page="users" class="nav-button">Cadastrar usuário</button>
+  </nav>
+
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2>Detalhes da reserva</h2>
+      <div id="modal-content"></div>
+      <div class="modal-actions">
+        <button type="button" class="button danger" id="cancel-reservation">Cancelar reserva</button>
+        <button type="button" class="button secondary" id="close-modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 </body>
-
 </html>
