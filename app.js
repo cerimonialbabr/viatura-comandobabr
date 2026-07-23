@@ -1,148 +1,30 @@
-/* app.js - versão consolidada */
-
-const API="https://script.google.com/macros/s/AKfycbyQZlxqsUEeFXsGy-SmjTGj400w52qL5xHUq6tvh1dI4gZvENdfJnn_abHSE73_IZD0gw/exec";
-
-let reservas=[];
-let militares=[];
-let setores=[];
-let tiposMissao=[];
-
-let hoje=new Date();
-let mesAtual=hoje.getMonth();
-let anoAtual=hoje.getFullYear();
-
-document.addEventListener("DOMContentLoaded",iniciar);
-
-async function iniciar(){
- mostrarLoader();
- await carregarDados();
- preencherMilitares();
- preencherTiposMissao();
- document.getElementById("militar")?.addEventListener("change",atualizarSetor);
- montarCalendario();
- atualizarMinhasReservas();
- esconderLoader();
-}
-
-async function carregarDados(){
- const r=await Promise.all([
-   apiGet("getReservas"),
-   apiGet("getMilitares"),
-   apiGet("getTiposMissao"),
-   apiGet("getSetores")
- ]);
- reservas=r[0].reservas||[];
- militares=r[1].militares||[];
- tiposMissao=r[2].tipos||[];
- setores=r[3].setores||[];
-}
-
-async function apiGet(action){
- const x=await fetch(API+"?action="+action,{cache:"no-store"});
- return await x.json();
-}
-
-async function apiPost(action,dados){
- const f=new FormData();
- f.append("action",action);
- f.append("payload",JSON.stringify(dados));
- const x=await fetch(API,{method:"POST",body:f});
- return await x.json();
-}
-
-function preencherMilitares(){
- const s=document.getElementById("militar"); if(!s)return;
- s.innerHTML='<option value="">Selecione...</option>';
- militares.forEach(m=>s.add(new Option(m.militar,m.militar)));
-}
-
-function preencherTiposMissao(){
- const s=document.getElementById("tipoMissao"); if(!s)return;
- s.innerHTML='<option value="">Selecione...</option>';
- tiposMissao.forEach(t=>s.add(new Option(t,t)));
-}
-
-function atualizarSetor(){
- const c=document.getElementById("setor");
- const m=militares.find(x=>x.militar===document.getElementById("militar").value);
- c.value=m?m.setor:"";
-}
-
-async function salvarReserva(){
- const dados={
-  militar:militar.value,
-  tipoMissao:tipoMissao.value,
-  data:data.value,
-  horaInicio:horaInicio.value,
-  horaFim:horaFim.value,
-  observacoes:observacoes.value
- };
- const r=await apiPost("criarReserva",dados);
- if(!r.sucesso){mostrarToast(r.mensagem,"erro");return;}
- mostrarToast("Reserva criada.","sucesso");
- limparFormulario();
- await carregarDados();
- montarCalendario();
- atualizarMinhasReservas();
-}
-
-function limparFormulario(){
- ["militar","setor","tipoMissao","data","horaInicio","horaFim","observacoes"]
- .forEach(id=>document.getElementById(id).value="");
-}
-
-function atualizarMinhasReservas(){
- const tb=document.getElementById("tabelaReservas"); if(!tb)return;
- tb.innerHTML="";
- reservas.forEach(r=>{
-  const tr=document.createElement("tr");
-  tr.innerHTML=`<td>${r.data}</td><td>${r.horaInicio}</td><td>${r.horaFim}</td><td>${r.militar}</td><td>${r.tipoMissao}</td><td>${r.status}</td><td>${r.status=="CONFIRMADO"?`<button onclick="cancelarReserva('${r.id}')">Cancelar</button>`:""}</td>`;
-  tb.appendChild(tr);
- });
-}
-
-async function cancelarReserva(id){
- if(!confirm("Cancelar reserva?"))return;
- await apiPost("cancelarReserva",{id});
- await carregarDados();
- montarCalendario();
- atualizarMinhasReservas();
-}
-
-function montarCalendario(){
- const c=document.getElementById("calendario"); if(!c)return;
- c.innerHTML="";
- atualizarTituloCalendario();
- const p=new Date(anoAtual,mesAtual,1);
- const u=new Date(anoAtual,mesAtual+1,0);
- for(let i=0;i<p.getDay();i++)c.appendChild(document.createElement("div"));
- for(let d=1;d<=u.getDate();d++){
-   const box=document.createElement("div");
-   box.className="diaCalendario";
-   const dataStr=`${anoAtual}-${String(mesAtual+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-   if(reservas.some(r=>r.data===dataStr&&r.status==="CONFIRMADO"))box.classList.add("ocupado");
-   box.textContent=d;
-   box.onclick=()=>mostrarReservasDia(dataStr);
-   c.appendChild(box);
- }
-}
-
-function mostrarReservasDia(data){
- const l=document.getElementById("listaDia"); if(!l)return;
- const rs=reservas.filter(r=>r.data===data);
- l.innerHTML=rs.length?rs.map(r=>`<p><b>${r.horaInicio}-${r.horaFim}</b><br>${r.militar}<br>${r.tipoMissao}</p>`).join(""):"<p>Nenhuma reserva.</p>";
-}
-function mesAnterior(){if(--mesAtual<0){mesAtual=11;anoAtual--;}montarCalendario();}
-function proximoMes(){if(++mesAtual>11){mesAtual=0;anoAtual++;}montarCalendario();}
-function atualizarTituloCalendario(){
- const meses=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
- const t=document.getElementById("tituloCalendario"); if(t)t.textContent=meses[mesAtual]+" / "+anoAtual;
-}
-function mostrarLoader(){loader&&(loader.style.display="flex");}
-function esconderLoader(){loader&&(loader.style.display="none");}
-function mostrarToast(txt,tipo){
- const t=document.getElementById("toast");
- if(!t){alert(txt);return;}
- t.className="toast "+tipo+" show";t.textContent=txt;
- setTimeout(()=>t.classList.remove("show"),3000);
-}
+"use strict";
+const state={reservations:[],military:[],sectors:[],missions:[],currentDate:new Date(),selectedDate:null,selectedReservationId:null};
+const months=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+document.addEventListener("DOMContentLoaded",initialize);
+async function initialize(){bindNavigation();bindActions();showLoader();try{validateApi();await loadAllData();fillSelects();renderCalendar();setDefaultDate();}catch(error){console.error(error);showToast("Não foi possível carregar o sistema: "+error.message,"error");setMessage(document.getElementById("reservation-message"),error.message,"error");}finally{hideLoader();}}
+function validateApi(){if(!window.CONFIG||!CONFIG.API_URL||CONFIG.API_URL.includes("COLE_AQUI"))throw new Error("URL do Apps Script não configurada.");}
+function bindNavigation(){document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>openPage(button.dataset.page)));}
+function bindActions(){byId("previous-month").addEventListener("click",()=>{state.currentDate=new Date(state.currentDate.getFullYear(),state.currentDate.getMonth()-1,1);renderCalendar();});byId("next-month").addEventListener("click",()=>{state.currentDate=new Date(state.currentDate.getFullYear(),state.currentDate.getMonth()+1,1);renderCalendar();});byId("reservation-user").addEventListener("change",updateSector);byId("reservation-form").addEventListener("submit",submitReservation);byId("search-my-reservations").addEventListener("click",renderMyReservations);byId("close-modal").addEventListener("click",closeModal);byId("cancel-reservation").addEventListener("click",cancelSelectedReservation);byId("modal-backdrop").addEventListener("click",e=>{if(e.target===byId("modal-backdrop"))closeModal();});}
+function openPage(name){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));byId(`page-${name}`).classList.add("active");document.querySelector(`[data-page="${name}"]`).classList.add("active");if(name==="calendar")renderCalendar();if(name==="mine")renderMyReservations();}
+async function apiGet(action){const url=new URL(CONFIG.API_URL);url.searchParams.set("action",action);url.searchParams.set("_",Date.now().toString());const response=await fetch(url.toString(),{cache:"no-store",redirect:"follow"});if(!response.ok)throw new Error(`Erro HTTP ${response.status}`);const text=await response.text();let data;try{data=JSON.parse(text);}catch{throw new Error("Resposta inválida do Apps Script.");}if(data.sucesso===false)throw new Error(data.mensagem||"Falha na operação.");return data;}
+async function apiPost(action,payload){const body=new URLSearchParams({action,payload:JSON.stringify(payload)});const response=await fetch(CONFIG.API_URL,{method:"POST",body,redirect:"follow"});if(!response.ok)throw new Error(`Erro HTTP ${response.status}`);const data=await response.json();if(data.sucesso===false)throw new Error(data.mensagem||"Falha na operação.");return data;}
+async function loadAllData(){const [r,m,s,t]=await Promise.all([apiGet("getReservas"),apiGet("getMilitares"),apiGet("getSetores"),apiGet("getTiposMissao")]);state.reservations=r.reservas||[];state.military=m.militares||[];state.sectors=s.setores||[];state.missions=t.tipos||[];}
+function fillSelects(){const people=state.military.map(x=>({value:x.militar,label:x.militar}));fillSelect("reservation-user",people,"Selecione o militar");fillSelect("my-user",people,"Selecione o militar");fillSelect("reservation-mission",state.missions.map(x=>({value:x,label:x})),"Selecione o tipo de missão");updateSector();}
+function fillSelect(id,items,placeholder){const select=byId(id),old=select.value;select.innerHTML="";select.add(new Option(placeholder,""));items.forEach(item=>select.add(new Option(item.label,item.value)));if(items.some(x=>x.value===old))select.value=old;}
+function updateSector(){const selected=state.military.find(x=>x.militar===byId("reservation-user").value);byId("reservation-sector").value=selected?selected.setor:"";}
+function renderCalendar(){const calendar=byId("calendar"),year=state.currentDate.getFullYear(),month=state.currentDate.getMonth();byId("calendar-title").textContent=`${months[month]} de ${year}`;calendar.innerHTML="";["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].forEach(x=>{const h=document.createElement("div");h.className="weekday";h.textContent=x;calendar.appendChild(h);});const first=new Date(year,month,1),start=new Date(year,month,1-first.getDay()),today=toIsoDate(new Date());for(let i=0;i<42;i++){const date=new Date(start);date.setDate(start.getDate()+i);const iso=toIsoDate(date),cell=document.createElement("div");cell.className="calendar-day";if(date.getMonth()!==month)cell.classList.add("outside");if(iso===today)cell.classList.add("today");if(iso===state.selectedDate)cell.classList.add("selected");cell.innerHTML=`<div class="day-number">${date.getDate()}</div>`;cell.addEventListener("click",()=>selectDay(iso));state.reservations.filter(r=>normalizeStatus(r.status)==="CONFIRMADO"&&r.data===iso).forEach(r=>{const b=document.createElement("button");b.type="button";b.className="calendar-event";b.textContent=`${r.horaInicio} ${r.militar}`;b.addEventListener("click",e=>{e.stopPropagation();openReservationModal(r.id);});cell.appendChild(b);});calendar.appendChild(cell);}}
+function selectDay(iso){state.selectedDate=iso;renderCalendar();renderSelectedDay();}
+function renderSelectedDay(){const title=byId("selected-day-title"),list=byId("selected-day-list");if(!state.selectedDate){title.textContent="Reservas do dia";list.innerHTML='<p class="muted">Selecione um dia no calendário.</p>';return;}title.textContent=`Reservas de ${formatDateBr(state.selectedDate)}`;const items=state.reservations.filter(r=>r.data===state.selectedDate&&normalizeStatus(r.status)==="CONFIRMADO").sort((a,b)=>a.horaInicio.localeCompare(b.horaInicio));if(!items.length){list.innerHTML="<p>Nenhuma reserva confirmada.</p>";return;}list.innerHTML="";items.forEach(r=>list.appendChild(makeReservationCard(r,true)));}
+async function submitReservation(event){event.preventDefault();const message=byId("reservation-message"),button=byId("submit-reservation");setMessage(message,"","");const payload={militar:byId("reservation-user").value,tipoMissao:byId("reservation-mission").value,data:byId("reservation-date").value,horaInicio:byId("reservation-start").value,horaFim:byId("reservation-end").value,observacoes:byId("reservation-notes").value.trim()};if(!payload.militar||!payload.tipoMissao||!payload.data||!payload.horaInicio||!payload.horaFim){setMessage(message,"Preencha todos os campos obrigatórios.","error");return;}if(payload.horaFim<=payload.horaInicio){setMessage(message,"O horário de término deve ser posterior ao início.","error");return;}button.disabled=true;showLoader();try{const result=await apiPost("criarReserva",payload);setMessage(message,result.mensagem||"Reserva confirmada.","success");byId("reservation-form").reset();updateSector();await refreshReservations();state.selectedDate=payload.data;renderCalendar();renderSelectedDay();showToast("Reserva realizada com sucesso.","success");setTimeout(()=>openPage("calendar"),600);}catch(error){setMessage(message,error.message,"error");showToast(error.message,"error");}finally{button.disabled=false;hideLoader();}}
+function renderMyReservations(){const container=byId("my-reservations"),name=byId("my-user").value;if(!name){container.innerHTML='<p class="muted">Selecione um militar.</p>';return;}const items=state.reservations.filter(r=>r.militar===name).sort((a,b)=>`${b.data} ${b.horaInicio}`.localeCompare(`${a.data} ${a.horaInicio}`));if(!items.length){container.innerHTML="<p>Nenhuma reserva encontrada.</p>";return;}container.innerHTML="";items.forEach(r=>container.appendChild(makeReservationCard(r,true)));}
+function makeReservationCard(r,withButton){const article=document.createElement("article");article.className="reservation-item"+(normalizeStatus(r.status)==="CANCELADO"?" cancelled":"");article.innerHTML=`<h3>${formatDateBr(r.data)} — ${escapeHtml(r.horaInicio)} às ${escapeHtml(r.horaFim)}</h3><p><strong>Militar:</strong> ${escapeHtml(r.militar)}</p><p><strong>Setor:</strong> ${escapeHtml(r.setor)}</p><p><strong>Missão:</strong> ${escapeHtml(r.tipoMissao)}</p><p><strong>Status:</strong> ${escapeHtml(r.status)}</p><p><strong>Observações:</strong> ${escapeHtml(r.observacoes||"Sem observações")}</p>`;if(withButton&&normalizeStatus(r.status)==="CONFIRMADO"){const div=document.createElement("div");div.className="inline-actions";const b=document.createElement("button");b.className="button danger";b.type="button";b.textContent="Cancelar reserva";b.addEventListener("click",()=>openReservationModal(r.id));div.appendChild(b);article.appendChild(div);}return article;}
+function openReservationModal(id){const r=state.reservations.find(x=>String(x.id)===String(id));if(!r)return;state.selectedReservationId=r.id;byId("modal-content").innerHTML=`<p><strong>Data:</strong> ${formatDateBr(r.data)}</p><p><strong>Horário:</strong> ${escapeHtml(r.horaInicio)} às ${escapeHtml(r.horaFim)}</p><p><strong>Militar:</strong> ${escapeHtml(r.militar)}</p><p><strong>Setor:</strong> ${escapeHtml(r.setor)}</p><p><strong>Missão:</strong> ${escapeHtml(r.tipoMissao)}</p><p><strong>Observações:</strong> ${escapeHtml(r.observacoes||"Sem observações")}</p>`;byId("cancel-reservation").style.display=normalizeStatus(r.status)==="CONFIRMADO"?"block":"none";byId("modal-backdrop").classList.remove("hidden");}
+function closeModal(){state.selectedReservationId=null;byId("modal-backdrop").classList.add("hidden");}
+async function cancelSelectedReservation(){if(!state.selectedReservationId||!confirm("Deseja cancelar esta reserva?"))return;showLoader();try{const result=await apiPost("cancelarReserva",{id:state.selectedReservationId});closeModal();await refreshReservations();renderCalendar();renderSelectedDay();renderMyReservations();showToast(result.mensagem||"Reserva cancelada.","success");}catch(error){showToast(error.message,"error");}finally{hideLoader();}}
+async function refreshReservations(){const data=await apiGet("getReservas");state.reservations=data.reservas||[];}
+function setDefaultDate(){const input=byId("reservation-date");if(!input.value)input.value=toIsoDate(new Date());}
+function showLoader(){byId("loader").classList.remove("hidden");}function hideLoader(){byId("loader").classList.add("hidden");}
+function showToast(text,type){const t=byId("toast");t.textContent=text;t.className=`toast ${type} show`;clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove("show"),3500);}
+function setMessage(el,text,type){el.textContent=text;el.className=`message ${type||""}`;}
+function normalizeStatus(x){return String(x||"").trim().toUpperCase();}function byId(id){return document.getElementById(id);}function toIsoDate(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`;}function formatDateBr(x){const p=String(x||"").split("-");return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:x;}function escapeHtml(x){return String(x??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
